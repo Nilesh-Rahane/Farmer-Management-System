@@ -7,6 +7,7 @@ const Payment = require('../models/Payment');
 const CropExpense = require('../models/CropExpense');
 const CropSale = require('../models/CropSale');
 const Crop = require('../models/Crop');
+const CorrectionRequest = require('../models/CorrectionRequest');
 const { protect } = require('../middleware/auth');
 const { requireFarmer } = require('../middleware/roles');
 
@@ -237,6 +238,12 @@ router.get('/dashboard-summary', async (req, res) => {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 8);
 
+    // Pending worker attendance/salary correction requests
+    const pendingCorrectionsCount = await CorrectionRequest.countDocuments({
+      farmer: farmerId,
+      status: 'pending',
+    });
+
     res.json({
       success: true,
       summary: {
@@ -250,6 +257,7 @@ router.get('/dashboard-summary', async (req, res) => {
         profitMargin,
         pendingWorkerDues,
         activeWorkersCount,
+        pendingCorrectionsCount,
       },
       charts: {
         monthlyTrends,
@@ -1697,6 +1705,196 @@ router.get('/reports', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Error generating reports',
+    });
+  }
+});
+
+// ==========================================
+// 8. WORKER CORRECTION REQUESTS MANAGEMENT
+// ==========================================
+
+// GET /api/farmer/corrections - List all worker correction requests
+router.get('/corrections', async (req, res) => {
+  try {
+    const farmerId = req.user._id;
+    const { status, workerId, requestType } = req.query;
+
+    const query = { farmer: farmerId };
+
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.status = status;
+    }
+
+    if (workerId) {
+      query.worker = workerId;
+    }
+
+    if (requestType && ['attendance', 'salary'].includes(requestType)) {
+      query.requestType = requestType;
+    }
+
+    const corrections = await CorrectionRequest.find(query)
+      .populate('worker', 'name email phone specialization dailyWageRate')
+      .populate('attendanceId', 'date status hoursWorked dailyWage cropField activity')
+      .sort({ createdAt: -1 });
+
+    const [total, pending, approved, rejected] = await Promise.all([
+      CorrectionRequest.countDocuments({ farmer: farmerId }),
+      CorrectionRequest.countDocuments({ farmer: farmerId, status: 'pending' }),
+      CorrectionRequest.countDocuments({ farmer: farmerId, status: 'approved' }),
+      CorrectionRequest.countDocuments({ farmer: farmerId, status: 'rejected' }),
+    ]);
+
+    res.json({
+      success: true,
+      counts: { total, pending, approved, rejected },
+      corrections,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching worker correction requests',
+    });
+  }
+});
+
+// PUT /api/farmer/corrections/:id - Approve or Reject correction request
+router.put('/corrections/:id', async (req, res) => {
+  try {
+    const farmerId = req.user._id;
+    const { status, farmerRemarks } = req.body;
+
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "approved" or "rejected"',
+      });
+    }
+
+    const correction = await CorrectionRequest.findOne({
+      _id: req.params.id,
+      farmer: farmerId,
+    });
+
+    if (!correction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Correction request not found',
+      });
+    }
+
+    if (correction.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `This correction request has already been ${correction.status}`,
+      });
+    }
+
+    // Process approval logic
+    if (status === 'approved') {
+      const worker = await User.findById(correction.worker);
+      const wageRate = worker?.dailyWageRate || 500;
+
+      if (correction.requestType === 'attendance') {
+        const reqStatus = correction.requestedStatus || 'present';
+        const reqHours = Number(correction.requestedHours) || 8;
+
+        let calculatedWage = wageRate;
+        let actualHours = reqHours;
+
+        if (reqStatus === 'present') {
+          calculatedWage = wageRate;
+          actualHours = reqHours || 8;
+        } else if (reqStatus === 'half_day') {
+          calculatedWage = Math.round(wageRate * 0.5 * 100) / 100;
+          actualHours = 4;
+        } else if (reqStatus === 'overtime') {
+          const overtimeHours = reqHours > 8 ? reqHours - 8 : 2;
+          const hourlyRate = wageRate / 8;
+          calculatedWage = Math.round((wageRate + overtimeHours * hourlyRate * 1.5) * 100) / 100;
+          actualHours = reqHours || 10;
+        } else if (reqStatus === 'absent') {
+          calculatedWage = 0;
+          actualHours = 0;
+        }
+
+        if (correction.attendanceId) {
+          await Attendance.findByIdAndUpdate(correction.attendanceId, {
+            status: reqStatus,
+            hoursWorked: actualHours,
+            dailyWage: calculatedWage,
+            notes: `Updated via approved correction request: ${correction.reason}`,
+          });
+        } else {
+          // Check if an attendance record already exists for that date
+          const startOfDay = new Date(correction.targetDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(correction.targetDate);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          const existingAtt = await Attendance.findOne({
+            worker: correction.worker,
+            farmer: farmerId,
+            date: { $gte: startOfDay, $lte: endOfDay },
+          });
+
+          if (existingAtt) {
+            existingAtt.status = reqStatus;
+            existingAtt.hoursWorked = actualHours;
+            existingAtt.dailyWage = calculatedWage;
+            existingAtt.notes = `Updated via approved correction: ${correction.reason}`;
+            await existingAtt.save();
+            correction.attendanceId = existingAtt._id;
+          } else {
+            const newAtt = await Attendance.create({
+              worker: correction.worker,
+              farmer: farmerId,
+              date: correction.targetDate,
+              status: reqStatus,
+              hoursWorked: actualHours,
+              wageRate,
+              dailyWage: calculatedWage,
+              cropField: 'General Farm',
+              activity: 'Field Labor (Correction Approved)',
+              notes: `Created via approved correction: ${correction.reason}`,
+            });
+            correction.attendanceId = newAtt._id;
+          }
+        }
+      } else if (correction.requestType === 'salary') {
+        // Discrepancy resolution: if requested amount exceeds recorded, create a payment record
+        const diff = Number(correction.requestedAmount) - Number(correction.currentAmount);
+        if (diff > 0) {
+          await Payment.create({
+            worker: correction.worker,
+            farmer: farmerId,
+            amount: diff,
+            date: new Date(),
+            paymentMode: 'cash',
+            notes: `Correction settlement: ${correction.reason}`,
+          });
+        }
+      }
+    }
+
+    correction.status = status;
+    correction.farmerRemarks = farmerRemarks ? farmerRemarks.trim() : '';
+    correction.reviewedAt = new Date();
+    await correction.save();
+
+    const populated = await CorrectionRequest.findById(correction._id)
+      .populate('worker', 'name email phone specialization dailyWageRate')
+      .populate('attendanceId');
+
+    res.json({
+      success: true,
+      message: `Correction request has been ${status} successfully`,
+      correction: populated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error reviewing correction request',
     });
   }
 });

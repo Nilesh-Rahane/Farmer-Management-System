@@ -183,6 +183,12 @@ const API = (() => {
         }),
       getTransactions: (params = '') => request(`/api/farmer/transactions${params}`),
       getReports: (params = '') => request(`/api/farmer/reports${params}`),
+      getCorrections: (params = '') => request(`/api/farmer/corrections${params}`),
+      reviewCorrection: (id, data) =>
+        request(`/api/farmer/corrections/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
     },
 
     // Worker-specific endpoints
@@ -190,6 +196,12 @@ const API = (() => {
       getDashboard: () => request('/api/worker/dashboard-summary'),
       getAttendance: (params = '') => request(`/api/worker/attendance${params}`),
       getPayments: (params = '') => request(`/api/worker/payments${params}`),
+      getCorrections: (params = '') => request(`/api/worker/corrections${params}`),
+      createCorrection: (data) =>
+        request('/api/worker/corrections', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
     },
 
     // System endpoints

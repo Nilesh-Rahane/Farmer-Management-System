@@ -36,6 +36,9 @@
 </head>
 <body>
 
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -44,13 +47,18 @@
   <!-- ========================================================================= -->
   <div id="view-auth" class="auth-wrapper" style="display: flex;">
     <div class="auth-card">
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+        <button type="button" class="btn btn-sm btn-lang-toggle" title="Switch Language / भाषा बदला">
+          <i class="fas fa-globe"></i> <span class="lang-current-label">मराठी</span>
+        </button>
+      </div>
       <div class="auth-brand">
         <div class="brand-icon-box">
           <i class="fas fa-seedling"></i>
         </div>
         <div class="auth-brand-text">
-          <h1>Farm Ledger</h1>
-          <span>Agricultural ERP & Wage System</span>
+          <h1 data-i18n="appName">Farm Ledger</h1>
+          <span data-i18n="appSubtitle">Agricultural ERP & Wage System</span>
         </div>
       </div>
 
@@ -179,21 +187,25 @@
           <i class="fas fa-calendar-check"></i> Attendance Register
         </div>
         <div class="nav-link farmer-nav-btn" data-tab="payments">
-          <i class="fas fa-hand-holding-dollar"></i> Wage Disbursements
+          <i class="fas fa-hand-holding-dollar"></i> <span data-i18n="navPayments">Wage Disbursements</span>
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="corrections">
+          <i class="fas fa-clipboard-question"></i> <span data-i18n="navCorrections">Correction Requests</span>
+          <span id="nav-farmer-corrections-badge" class="badge badge-warning" style="display: none; margin-left: auto; font-size: 0.72rem; padding: 2px 7px;">0</span>
         </div>
 
-        <div class="nav-section-label">Farm Accounting</div>
+        <div class="nav-section-label" data-i18n="navAnalytics">Farm Accounting</div>
         <div class="nav-link farmer-nav-btn" data-tab="expenses">
-          <i class="fas fa-receipt"></i> Crop Expenses
+          <i class="fas fa-receipt"></i> <span data-i18n="navExpenses">Crop Expenses</span>
         </div>
         <div class="nav-link farmer-nav-btn" data-tab="sales">
-          <i class="fas fa-wheat-awn"></i> Crop Sales & Revenue
+          <i class="fas fa-wheat-awn"></i> <span data-i18n="navSales">Crop Sales & Revenue</span>
         </div>
         <div class="nav-link farmer-nav-btn" data-tab="transactions">
           <i class="fas fa-book-journal-whills"></i> Unified Ledger
         </div>
         <div class="nav-link farmer-nav-btn" data-tab="reports">
-          <i class="fas fa-file-invoice-dollar"></i> Reports & Analytics
+          <i class="fas fa-file-invoice-dollar"></i> <span data-i18n="navReports">Reports & Analytics</span>
         </div>
       </nav>
 
@@ -206,7 +218,7 @@
           </div>
         </div>
         <button class="btn btn-secondary btn-sm btn-block btn-logout">
-          <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+          <i class="fas fa-arrow-right-from-bracket"></i> <span data-i18n="signOut">Sign Out</span>
         </button>
       </div>
     </aside>
@@ -226,8 +238,11 @@
         </div>
 
         <div class="topbar-right">
+          <button type="button" class="btn btn-sm btn-lang-toggle" title="Switch Language / भाषा बदला">
+            <i class="fas fa-globe"></i> <span class="lang-current-label">मराठी</span>
+          </button>
           <button class="btn btn-secondary btn-sm btn-logout" title="Sign Out">
-            <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+            <i class="fas fa-arrow-right-from-bracket"></i> <span data-i18n="signOut">Sign Out</span>
           </button>
         </div>
       </header>
@@ -862,6 +877,93 @@
           </div>
         </div>
 
+        <!-- TAB: CORRECTION REQUESTS -->
+        <div id="farmer-tab-corrections" class="farmer-tab-pane" style="display: none;">
+          <!-- Summary Cards -->
+          <div class="stat-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Requests</span>
+                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+              </div>
+              <div id="farmer-corr-total" class="stat-value">0</div>
+              <div class="stat-subtext">All submitted worker claims</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending Review</span>
+                <div class="stat-icon text-warning"><i class="fas fa-clock"></i></div>
+              </div>
+              <div id="farmer-corr-pending" class="stat-value text-warning">0</div>
+              <div class="stat-subtext">Awaiting farmer decision</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Approved</span>
+                <div class="stat-icon text-success"><i class="fas fa-circle-check"></i></div>
+              </div>
+              <div id="farmer-corr-approved" class="stat-value text-success">0</div>
+              <div class="stat-subtext">Records corrected & wages recalculated</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Rejected</span>
+                <div class="stat-icon text-danger"><i class="fas fa-circle-xmark"></i></div>
+              </div>
+              <div id="farmer-corr-rejected" class="stat-value text-danger">0</div>
+              <div class="stat-subtext">Declined requests with remarks</div>
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3 data-i18n="farmerCorrectionsHeader">Worker Attendance & Salary Correction Requests</h3>
+                <p data-i18n="farmerCorrectionsSub">Review and approve/reject attendance adjustments and wage discrepancy claims submitted by workers</p>
+              </div>
+              <div class="data-card-actions">
+                <div class="filter-bar">
+                  <select id="filter-farmer-corr-status" class="form-control" style="width: auto;">
+                    <option value="">All Statuses</option>
+                    <option value="pending" selected>Pending Only</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <select id="filter-farmer-corr-type" class="form-control" style="width: auto;">
+                    <option value="">All Types</option>
+                    <option value="attendance">Attendance</option>
+                    <option value="salary">Salary / Wage</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Worker</th>
+                    <th>Type</th>
+                    <th>Current Record</th>
+                    <th>Requested Value</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Farmer Remarks</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="farmer-corrections-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
@@ -885,13 +987,17 @@
       <nav class="sidebar-nav">
         <div class="nav-section-label">My Workspace</div>
         <div class="nav-link worker-nav-btn active" data-tab="overview">
-          <i class="fas fa-gauge-high"></i> My Overview & Balance
+          <i class="fas fa-gauge-high"></i> <span data-i18n="myOverview">My Overview & Balance</span>
         </div>
         <div class="nav-link worker-nav-btn" data-tab="attendance">
-          <i class="fas fa-calendar-check"></i> My Attendance Log
+          <i class="fas fa-calendar-check"></i> <span data-i18n="myAttendance">My Attendance Log</span>
         </div>
         <div class="nav-link worker-nav-btn" data-tab="payments">
-          <i class="fas fa-receipt"></i> Payment Vouchers
+          <i class="fas fa-receipt"></i> <span data-i18n="myPayments">Payment Vouchers</span>
+        </div>
+        <div class="nav-link worker-nav-btn" data-tab="corrections">
+          <i class="fas fa-clipboard-question"></i> <span data-i18n="myCorrections">Correction Requests</span>
+          <span id="nav-worker-corrections-badge" class="badge badge-warning" style="display: none; margin-left: auto; font-size: 0.72rem; padding: 2px 7px;">0</span>
         </div>
       </nav>
 
@@ -904,7 +1010,7 @@
           </div>
         </div>
         <button class="btn btn-secondary btn-sm btn-block btn-logout">
-          <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+          <i class="fas fa-arrow-right-from-bracket"></i> <span data-i18n="signOut">Sign Out</span>
         </button>
       </div>
     </aside>
@@ -917,14 +1023,17 @@
             <i class="fas fa-bars"></i>
           </button>
           <div class="page-breadcrumb">
-            <h1 class="page-title">Worker Personal Ledger</h1>
-            <span class="page-subtitle">Your personal attendance records, wage earnings, and payment history</span>
+            <h1 class="page-title" data-i18n="workerDashboardTitle">Worker Personal Ledger</h1>
+            <span class="page-subtitle" data-i18n="workerDashboardSub">Your personal attendance records, wage earnings, and payment history</span>
           </div>
         </div>
 
         <div class="topbar-right">
+          <button type="button" class="btn btn-sm btn-lang-toggle" title="Switch Language / भाषा बदला">
+            <i class="fas fa-globe"></i> <span class="lang-current-label">मराठी</span>
+          </button>
           <button class="btn btn-secondary btn-sm btn-logout" title="Sign Out">
-            <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+            <i class="fas fa-arrow-right-from-bracket"></i> <span data-i18n="signOut">Sign Out</span>
           </button>
         </div>
       </header>
@@ -1089,6 +1198,7 @@
                     <th>Wage Rate</th>
                     <th>Earned Wage</th>
                     <th>Field & Task Notes</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="worker-full-att-tbody">
@@ -1134,6 +1244,89 @@
                   </tr>
                 </thead>
                 <tbody id="worker-full-pay-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: WORKER CORRECTION REQUESTS -->
+        <div id="worker-tab-corrections" class="worker-tab-pane" style="display: none;">
+          <!-- Summary Cards -->
+          <div class="stat-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">My Total Requests</span>
+                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+              </div>
+              <div id="worker-corr-total" class="stat-value">0</div>
+              <div class="stat-subtext">All submitted correction claims</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending Approval</span>
+                <div class="stat-icon text-warning"><i class="fas fa-clock"></i></div>
+              </div>
+              <div id="worker-corr-pending" class="stat-value text-warning">0</div>
+              <div class="stat-subtext">Awaiting farmer review</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Approved</span>
+                <div class="stat-icon text-success"><i class="fas fa-circle-check"></i></div>
+              </div>
+              <div id="worker-corr-approved" class="stat-value text-success">0</div>
+              <div class="stat-subtext">Wages & attendance updated</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Rejected</span>
+                <div class="stat-icon text-danger"><i class="fas fa-circle-xmark"></i></div>
+              </div>
+              <div id="worker-corr-rejected" class="stat-value text-danger">0</div>
+              <div class="stat-subtext">Declined with farmer explanation</div>
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3 data-i18n="myCorrections">Attendance & Salary Correction Requests</h3>
+                <p>Track the review status and farmer feedback for all your submitted claims</p>
+              </div>
+              <div class="data-card-actions">
+                <div class="filter-bar">
+                  <select id="worker-filter-corr-status" class="form-control" style="width: auto;">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <button id="btn-open-worker-correction" class="btn btn-primary btn-sm">
+                  <i class="fas fa-plus-circle"></i> <span data-i18n="workerRequestCorrectionBtn">New Correction Request</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Current Record</th>
+                    <th>Requested Value</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Farmer Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="worker-corrections-tbody">
                   <!-- Populated dynamically -->
                 </tbody>
               </table>
@@ -1603,7 +1796,146 @@
     </div>
   </div>
 
+  <!-- MODAL: WORKER CORRECTION REQUEST -->
+  <div id="modal-worker-correction" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3 data-i18n="modalWorkerCorrectionTitle">Submit Attendance / Salary Correction Request</h3>
+          <p>Request farm owner to review and update incorrect attendance or wage records</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-worker-correction">
+        <div class="modal-body">
+          <input type="hidden" id="modal-correction-att-id">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-correction-type" data-i18n="correctionTypeLabel">Request Type *</label>
+              <select id="modal-correction-type" class="form-control" required>
+                <option value="attendance" data-i18n="typeAttendance">Attendance Correction</option>
+                <option value="salary" data-i18n="typeSalary">Salary / Wage Discrepancy</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-correction-date" data-i18n="correctionDateLabel">Date of Work / Event *</label>
+              <input type="date" id="modal-correction-date" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- Attendance Specific Fields -->
+          <div id="correction-attendance-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="modal-correction-curr-status" data-i18n="currentStatusLabel">Current Status</label>
+                <select id="modal-correction-curr-status" class="form-control">
+                  <option value="absent">Absent</option>
+                  <option value="half_day">Half Day</option>
+                  <option value="present">Present</option>
+                  <option value="overtime">Overtime</option>
+                  <option value="not_recorded">Not Recorded / Missed</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="modal-correction-req-status" data-i18n="requestedStatusLabel">Requested Status *</label>
+                <select id="modal-correction-req-status" class="form-control">
+                  <option value="present">Present (Full Day)</option>
+                  <option value="overtime">Overtime</option>
+                  <option value="half_day">Half Day</option>
+                  <option value="absent">Absent</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-correction-req-hours" data-i18n="hoursLabel">Actual Hours Worked</label>
+              <input type="number" id="modal-correction-req-hours" class="form-control" value="8" min="1" max="24">
+            </div>
+          </div>
+
+          <!-- Salary Specific Fields -->
+          <div id="correction-salary-fields" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="modal-correction-curr-amount" data-i18n="currentAmountLabel">Current Amount (₹)</label>
+                <input type="number" id="modal-correction-curr-amount" class="form-control" value="0" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="modal-correction-req-amount" data-i18n="requestedAmountLabel">Claimed / Requested Amount (₹) *</label>
+                <input type="number" id="modal-correction-req-amount" class="form-control" value="500" min="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-correction-reason" data-i18n="reasonExplanationLabel">Reason / Explanation *</label>
+            <textarea id="modal-correction-reason" class="form-control" rows="3" placeholder="Describe the discrepancy in detail..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel" data-i18n="cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <span data-i18n="confirm">Submit Request</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: FARMER REVIEW CORRECTION -->
+  <div id="modal-review-correction" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3 data-i18n="modalReviewCorrectionTitle">Review Worker Correction Request</h3>
+          <p>Approve or reject attendance adjustments or wage discrepancy claims</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-review-correction">
+        <div class="modal-body">
+          <input type="hidden" id="modal-review-id">
+
+          <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <strong id="review-worker-name" style="font-size: 1.05rem; color: var(--slate-900);">Worker Name</strong>
+              <span id="review-request-type" class="badge badge-primary">Attendance</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 10px;">
+              <i class="fas fa-calendar"></i> Target Date: <strong id="review-target-date">2026-10-29</strong>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; padding: 10px; background: #fff; border-radius: var(--radius-sm); border: 1px dashed var(--slate-300);">
+              <div>
+                <span style="font-size: 0.75rem; color: var(--slate-500); display: block;">Current Value:</span>
+                <strong id="review-current-val" style="color: var(--slate-700);">Absent</strong>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; color: var(--primary-700); display: block;">Requested Correction:</span>
+                <strong id="review-requested-val" style="color: var(--primary-700);">Present (8 hrs)</strong>
+              </div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--slate-500); display: block; margin-bottom: 4px;">Worker's Reason:</span>
+              <p id="review-reason" style="font-size: 0.88rem; color: var(--slate-800); background: #fff; padding: 10px; border-radius: var(--radius-sm); margin: 0;"></p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-review-remarks" data-i18n="farmerRemarksLabel">Farmer Remarks / Decision Note</label>
+            <textarea id="modal-review-remarks" class="form-control" rows="2" placeholder="Optional explanation or feedback for worker..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+          <button type="button" class="btn btn-secondary btn-modal-cancel" data-i18n="cancel">Cancel</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" id="btn-review-reject" class="btn btn-danger"><i class="fas fa-times"></i> <span data-i18n="btnReject">Reject</span></button>
+            <button type="button" id="btn-review-approve" class="btn btn-success"><i class="fas fa-check"></i> <span data-i18n="btnApprove">Approve</span></button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Scripts -->
+  <script src="js/i18n.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/farmer.js"></script>

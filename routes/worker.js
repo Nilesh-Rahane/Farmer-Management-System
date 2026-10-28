@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
+const CorrectionRequest = require('../models/CorrectionRequest');
 const { protect } = require('../middleware/auth');
 const { requireWorker } = require('../middleware/roles');
 
@@ -268,6 +269,116 @@ router.get('/payments', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Error fetching payment records',
+    });
+  }
+});
+
+// ==========================================
+// 4. WORKER CORRECTION REQUESTS
+// ==========================================
+
+// GET /api/worker/corrections - List all correction requests submitted by worker
+router.get('/corrections', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = { worker: req.user._id };
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.status = status;
+    }
+
+    const corrections = await CorrectionRequest.find(query)
+      .populate('attendanceId', 'date status hoursWorked dailyWage cropField activity')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: corrections.length,
+      corrections,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching correction requests',
+    });
+  }
+});
+
+// POST /api/worker/corrections - Submit a new correction request
+router.post('/corrections', async (req, res) => {
+  try {
+    const {
+      requestType,
+      targetDate,
+      attendanceId,
+      currentStatus,
+      requestedStatus,
+      currentHours,
+      requestedHours,
+      currentAmount,
+      requestedAmount,
+      reason,
+    } = req.body;
+
+    if (!req.user.farmerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not assigned to a farm owner yet. Cannot submit correction request.',
+      });
+    }
+
+    if (!requestType || !['attendance', 'salary'].includes(requestType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid request type is required (attendance or salary)',
+      });
+    }
+
+    if (!targetDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target date is required',
+      });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a reason explaining the correction request',
+      });
+    }
+
+    if (requestType === 'attendance' && !requestedStatus) {
+      return res.status(400).json({
+        success: false,
+        message: 'Requested attendance status is required (present, half_day, overtime, absent)',
+      });
+    }
+
+    const correction = await CorrectionRequest.create({
+      worker: req.user._id,
+      farmer: req.user.farmerId,
+      requestType,
+      targetDate: new Date(targetDate),
+      attendanceId: attendanceId || null,
+      currentStatus: currentStatus || '',
+      requestedStatus: requestedStatus || '',
+      currentHours: currentHours !== undefined ? Number(currentHours) : 0,
+      requestedHours: requestedHours !== undefined ? Number(requestedHours) : 8,
+      currentAmount: currentAmount !== undefined ? Number(currentAmount) : 0,
+      requestedAmount: requestedAmount !== undefined ? Number(requestedAmount) : 0,
+      reason: reason.trim(),
+      status: 'pending',
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Correction request submitted successfully. Waiting for farmer review.',
+      correction,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error submitting correction request',
     });
   }
 });

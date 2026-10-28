@@ -6,6 +6,7 @@ const Payment = require('../models/Payment');
 const CropExpense = require('../models/CropExpense');
 const CropSale = require('../models/CropSale');
 const Crop = require('../models/Crop');
+const CorrectionRequest = require('../models/CorrectionRequest');
 
 const seedData = async () => {
   try {
@@ -22,6 +23,7 @@ const seedData = async () => {
     await CropExpense.deleteMany({});
     await CropSale.deleteMany({});
     await Crop.deleteMany({});
+    await CorrectionRequest.deleteMany({});
 
     console.log(' Cleaned previous database collections');
 
@@ -467,6 +469,39 @@ const seedData = async () => {
 
     await Crop.create(cropRecords);
     console.log(` Created ${cropRecords.length} Crop records with dates in MongoDB`);
+
+    // 6. Create sample correction requests
+    const targetAtt = attendanceRecords.find((a) => a.worker.toString() === workers[0]._id.toString());
+    const correctionRecords = [
+      {
+        worker: workers[0]._id, // Ramesh
+        farmer: farmer._id,
+        requestType: 'attendance',
+        attendanceId: targetAtt ? targetAtt._id : null,
+        targetDate: targetAtt ? targetAtt.date : new Date(),
+        currentStatus: targetAtt ? targetAtt.status : 'absent',
+        requestedStatus: 'present',
+        currentHours: targetAtt ? targetAtt.workHours : 0,
+        requestedHours: 8,
+        reason: 'Was present full day working on tractor diesel pump repair; marked absent by mistake.',
+        status: 'pending',
+      },
+      {
+        worker: workers[1]._id, // Suresh
+        farmer: farmer._id,
+        requestType: 'salary',
+        targetDate: new Date(Date.now() - 3 * 86400000),
+        currentAmount: 1500,
+        requestedAmount: 2000,
+        reason: 'Overtime allowance for late-night wheat threshing operation not added.',
+        status: 'approved',
+        farmerRemarks: 'Approved and verified with logbook. Added Rs 500 bonus settlement.',
+        reviewedAt: new Date(Date.now() - 86400000),
+      },
+    ];
+
+    await CorrectionRequest.create(correctionRecords);
+    console.log(` Created ${correctionRecords.length} sample Worker Correction Requests`);
 
     console.log('\n=========================================');
     console.log(' SEEDING COMPLETED SUCCESSFULLY!');

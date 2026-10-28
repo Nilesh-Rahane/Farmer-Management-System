@@ -5,6 +5,7 @@ const App = (() => {
   let currentUser = null;
 
   const init = async () => {
+    if (window.I18n) I18n.init();
     bindGlobalEvents();
     await handleAuthStateChange();
   };
@@ -15,34 +16,69 @@ const App = (() => {
       btn.addEventListener('click', () => Auth.logout());
     });
 
-    // Mobile sidebar toggle buttons
+    // Mobile sidebar toggle and overlay elements
     const farmerMenuBtn = document.getElementById('farmer-menu-toggle');
     const workerMenuBtn = document.getElementById('worker-menu-toggle');
     const farmerSidebar = document.getElementById('farmer-sidebar');
     const workerSidebar = document.getElementById('worker-sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    const closeMobileSidebar = () => {
+      if (farmerSidebar) farmerSidebar.classList.remove('mobile-open');
+      if (workerSidebar) workerSidebar.classList.remove('mobile-open');
+      if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+    };
 
     if (farmerMenuBtn && farmerSidebar) {
-      farmerMenuBtn.addEventListener('click', () => {
-        farmerSidebar.classList.toggle('mobile-open');
+      farmerMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = farmerSidebar.classList.toggle('mobile-open');
+        if (sidebarOverlay) sidebarOverlay.classList.toggle('active', isOpen);
       });
     }
 
     if (workerMenuBtn && workerSidebar) {
-      workerMenuBtn.addEventListener('click', () => {
-        workerSidebar.classList.toggle('mobile-open');
+      workerMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = workerSidebar.classList.toggle('mobile-open');
+        if (sidebarOverlay) sidebarOverlay.classList.toggle('active', isOpen);
       });
     }
+
+    if (sidebarOverlay) {
+      sidebarOverlay.addEventListener('click', () => {
+        closeMobileSidebar();
+      });
+    }
+
+    // Auto-close sidebar on mobile when a nav item is clicked
+    document.querySelectorAll('.sidebar-nav .nav-link').forEach((link) => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          closeMobileSidebar();
+        }
+      });
+    });
 
     // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
       if (window.innerWidth <= 768) {
         if (farmerSidebar && farmerSidebar.classList.contains('mobile-open') && !farmerSidebar.contains(e.target) && e.target !== farmerMenuBtn) {
-          farmerSidebar.classList.remove('mobile-open');
+          closeMobileSidebar();
         }
         if (workerSidebar && workerSidebar.classList.contains('mobile-open') && !workerSidebar.contains(e.target) && e.target !== workerMenuBtn) {
-          workerSidebar.classList.remove('mobile-open');
+          closeMobileSidebar();
         }
       }
+    });
+
+    // Language Toggle Buttons
+    document.querySelectorAll('.btn-lang-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (window.I18n) {
+          I18n.toggleLanguage();
+        }
+      });
     });
 
     // Global Modal Backdrop Click / Close Button handling
@@ -133,6 +169,8 @@ const App = (() => {
 
       await WorkerDashboard.init();
     }
+
+    if (window.I18n) I18n.applyTranslationsToDOM();
   };
 
   const handleAuthStateChange = async () => {
@@ -146,6 +184,7 @@ const App = (() => {
       if (authWrapper) authWrapper.style.display = 'flex';
       if (farmerWrapper) farmerWrapper.style.display = 'none';
       if (workerWrapper) workerWrapper.style.display = 'none';
+      if (window.I18n) I18n.applyTranslationsToDOM();
       return;
     }
 

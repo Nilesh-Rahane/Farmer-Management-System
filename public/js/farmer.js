@@ -128,6 +128,21 @@ const FarmerDashboard = (() => {
     const btnPrintReport = document.getElementById('btn-print-report');
     if (btnPrintReport) btnPrintReport.addEventListener('click', () => window.print());
 
+    // Worker Correction Requests Filters & Review Actions
+    const corrStatusFilter = document.getElementById('filter-farmer-corr-status');
+    const corrTypeFilter = document.getElementById('filter-farmer-corr-type');
+    if (corrStatusFilter) corrStatusFilter.addEventListener('change', loadCorrectionsTable);
+    if (corrTypeFilter) corrTypeFilter.addEventListener('change', loadCorrectionsTable);
+
+    const btnApprove = document.getElementById('btn-review-approve');
+    const btnReject = document.getElementById('btn-review-reject');
+    if (btnApprove) btnApprove.addEventListener('click', () => handleReviewSubmit('approved'));
+    if (btnReject) btnReject.addEventListener('click', () => handleReviewSubmit('rejected'));
+
+    window.addEventListener('languageChanged', () => {
+      loadActiveTab();
+    });
+
     // Worker rate change listener in attendance modal for live calculation
     const attWorkerSelect = document.getElementById('modal-att-worker');
     const attStatusSelect = document.getElementById('modal-att-status');
@@ -219,6 +234,7 @@ const FarmerDashboard = (() => {
       sales: { title: 'Crop Harvest Sales & Revenue', sub: 'Track Harvest Sales, Market Mandis, Buyers & Total Realization' },
       transactions: { title: 'Unified Farm Ledger', sub: 'Chronological Audit Timeline of All Inflows and Outflows' },
       reports: { title: 'Analytics & Financial Reports', sub: 'Production Summaries, Crop Margins, Cost Breakdowns & CSV Export' },
+      corrections: { title: 'Worker Attendance & Salary Correction Requests', sub: 'Review and approve/reject attendance adjustments and wage discrepancy claims' },
     };
 
     const currentTitle = tabTitles[tabId] || { title: 'Farmer Dashboard', sub: 'Farm Ledger Management System' };
@@ -247,6 +263,7 @@ const FarmerDashboard = (() => {
     else if (active === 'sales') await loadSalesTable();
     else if (active === 'transactions') await loadTransactionsTable();
     else if (active === 'reports') await loadReports();
+    else if (active === 'corrections') await loadCorrectionsTable();
   };
 
   // ==========================================
@@ -278,6 +295,14 @@ const FarmerDashboard = (() => {
       }
 
       document.getElementById('kpi-workers-count').textContent = s.activeWorkersCount || 0;
+
+      // Update pending corrections badge
+      const pendingCorrBadge = document.getElementById('nav-farmer-corrections-badge');
+      if (pendingCorrBadge) {
+        const pCount = s.pendingCorrectionsCount || 0;
+        pendingCorrBadge.textContent = pCount;
+        pendingCorrBadge.style.display = pCount > 0 ? 'inline-block' : 'none';
+      }
 
       // Render Charts
       renderMonthlyChart(res.charts.monthlyTrends);
@@ -1589,6 +1614,167 @@ const FarmerDashboard = (() => {
     }
   };
 
+  // ==========================================
+  // 7. CORRECTION REQUESTS MANAGEMENT
+  // ==========================================
+  let cachedCorrections = [];
+
+  const loadCorrectionsTable = async () => {
+    const tbody = document.getElementById('farmer-corrections-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;"><i class="fas fa-spinner fa-spin"></i> Loading correction requests...</td></tr>';
+
+    try {
+      const status = document.getElementById('filter-farmer-corr-status')?.value || '';
+      const type = document.getElementById('filter-farmer-corr-type')?.value || '';
+
+      const queryParams = new URLSearchParams();
+      if (status) queryParams.append('status', status);
+      if (type) queryParams.append('requestType', type);
+
+      const res = await API.farmer.getCorrections(queryParams.toString() ? `?${queryParams.toString()}` : '');
+      cachedCorrections = res.corrections || [];
+
+      // Update Tally Summary Cards
+      const counts = res.counts || { total: 0, pending: 0, approved: 0, rejected: 0 };
+      const elTotal = document.getElementById('farmer-corr-total');
+      const elPending = document.getElementById('farmer-corr-pending');
+      const elApproved = document.getElementById('farmer-corr-approved');
+      const elRejected = document.getElementById('farmer-corr-rejected');
+      const badgeNav = document.getElementById('nav-farmer-corrections-badge');
+
+      if (elTotal) elTotal.textContent = counts.total || 0;
+      if (elPending) elPending.textContent = counts.pending || 0;
+      if (elApproved) elApproved.textContent = counts.approved || 0;
+      if (elRejected) elRejected.textContent = counts.rejected || 0;
+      if (badgeNav) {
+        badgeNav.textContent = counts.pending || 0;
+        badgeNav.style.display = counts.pending > 0 ? 'inline-block' : 'none';
+      }
+
+      if (cachedCorrections.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--slate-500);">
+              <i class="fas fa-clipboard-check fa-2x" style="margin-bottom:8px; display:block; color:var(--slate-400);"></i>
+              No correction requests found matching current filter.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = cachedCorrections
+        .map((c) => {
+          const dateStr = new Date(c.targetDate).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+
+          const workerName = c.worker ? c.worker.name : 'Unknown Worker';
+          const typeBadge = c.requestType === 'attendance'
+            ? '<span class="badge badge-primary"><i class="fas fa-calendar-check"></i> Attendance</span>'
+            : '<span class="badge badge-warning"><i class="fas fa-coins"></i> Salary</span>';
+
+          const statusBadge = c.status === 'approved'
+            ? '<span class="badge badge-success"><i class="fas fa-check-circle"></i> Approved</span>'
+            : c.status === 'rejected'
+            ? '<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Rejected</span>'
+            : '<span class="badge badge-warning"><i class="fas fa-clock"></i> Pending Review</span>';
+
+          let currText = '';
+          let reqText = '';
+
+          if (c.requestType === 'attendance') {
+            currText = c.currentStatus ? `${c.currentStatus.toUpperCase()} (${c.currentHours || 0} hrs)` : 'Not Recorded';
+            reqText = `<strong>${c.requestedStatus.toUpperCase()}</strong> (${c.requestedHours || 8} hrs)`;
+          } else {
+            currText = `₹${(c.currentAmount || 0).toLocaleString('en-IN')}`;
+            reqText = `<strong style="color:var(--primary-700);">₹${(c.requestedAmount || 0).toLocaleString('en-IN')}</strong>`;
+          }
+
+          const actionHtml = c.status === 'pending'
+            ? `<button class="btn btn-primary btn-xs" onclick="FarmerDashboard.openReviewModal('${c._id}')">
+                <i class="fas fa-gavel"></i> Review
+               </button>`
+            : `<span style="font-size:0.75rem; color:var(--slate-500);"><i class="fas fa-check-double"></i> Resolved</span>`;
+
+          return `
+            <tr>
+              <td><span style="font-weight:600;">${dateStr}</span></td>
+              <td>
+                <div style="font-weight:700; color:var(--slate-900);">${workerName}</div>
+                <div style="font-size:0.75rem; color:var(--slate-500);">${c.worker?.specialization || 'Farm Hand'}</div>
+              </td>
+              <td>${typeBadge}</td>
+              <td style="color:var(--slate-600);">${currText}</td>
+              <td>${reqText}</td>
+              <td style="max-width:240px; font-size:0.84rem;" title="${c.reason}">
+                ${c.reason}
+              </td>
+              <td>${statusBadge}</td>
+              <td style="font-size:0.82rem; color:var(--slate-600); max-width:180px;">
+                ${c.farmerRemarks || '<em style="color:var(--slate-400);">None</em>'}
+              </td>
+              <td>${actionHtml}</td>
+            </tr>
+          `;
+        })
+        .join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--danger); padding:20px;">Failed to load correction requests: ${err.message}</td></tr>`;
+    }
+  };
+
+  const openReviewModal = (id) => {
+    const item = cachedCorrections.find((c) => c._id === id);
+    if (!item) return;
+
+    document.getElementById('modal-review-id').value = item._id;
+    document.getElementById('review-worker-name').textContent = item.worker?.name || 'Worker';
+    document.getElementById('review-request-type').textContent = item.requestType === 'attendance' ? 'Attendance Correction' : 'Salary Discrepancy';
+    document.getElementById('review-target-date').textContent = new Date(item.targetDate).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    if (item.requestType === 'attendance') {
+      document.getElementById('review-current-val').textContent = `${(item.currentStatus || 'Absent').toUpperCase()} (${item.currentHours || 0} hrs)`;
+      document.getElementById('review-requested-val').textContent = `${(item.requestedStatus || 'Present').toUpperCase()} (${item.requestedHours || 8} hrs)`;
+    } else {
+      document.getElementById('review-current-val').textContent = `₹${(item.currentAmount || 0).toLocaleString('en-IN')}`;
+      document.getElementById('review-requested-val').textContent = `₹${(item.requestedAmount || 0).toLocaleString('en-IN')}`;
+    }
+
+    document.getElementById('review-reason').textContent = item.reason;
+    document.getElementById('modal-review-remarks').value = '';
+
+    App.openModal('modal-review-correction');
+  };
+
+  const handleReviewSubmit = async (decision) => {
+    const id = document.getElementById('modal-review-id').value;
+    const remarks = document.getElementById('modal-review-remarks').value;
+    if (!id) return;
+
+    try {
+      const res = await API.farmer.reviewCorrection(id, {
+        status: decision,
+        farmerRemarks: remarks,
+      });
+
+      App.closeModal('modal-review-correction');
+      App.showToast(res.message || `Correction request ${decision}!`, decision === 'approved' ? 'success' : 'info');
+      await loadCorrectionsTable();
+      await loadSummary();
+      await refreshWorkersCache();
+    } catch (err) {
+      App.showToast(err.message || 'Error processing correction request', 'error');
+    }
+  };
+
   // Utility Debounce
   function debounce(func, wait) {
     let timeout;
@@ -1614,6 +1800,8 @@ const FarmerDashboard = (() => {
     openPaymentForWorker,
     openExpenseModal,
     openSaleModal,
+    openReviewModal,
+    loadCorrectionsTable,
     editWorker,
     deleteWorker,
     editCrop,
