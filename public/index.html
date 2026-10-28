@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farm Ledger – Modern Farm Management & Accounting System</title>
+  <meta name="description" content="Complete, responsive Farm Management System for Farmers and Workers. Manage workers, attendance, daily wages, crop expenses, harvest sales, profit/loss ledger, and instant real-time synchronization.">
+  <meta name="keywords" content="farm management, farm ledger, crop expenses, agriculture accounting, worker attendance, wage calculation, farmer dashboard, worker dashboard">
+
+  <!-- Favicon icon using SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6.5.1 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Chart.js 4.4.1 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <script>
+    // Early session detection to prevent flicker on refresh
+    if (localStorage.getItem('farm_ledger_token')) {
+      document.documentElement.classList.add('is-authenticated');
+    }
+  </script>
+  <style>
+    html.is-authenticated #view-auth { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 1. AUTHENTICATION VIEW (Farmer & Worker Login / Register)                 -->
+  <!-- ========================================================================= -->
+  <div id="view-auth" class="auth-wrapper" style="display: flex;">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-icon-box">
+          <i class="fas fa-seedling"></i>
+        </div>
+        <div class="auth-brand-text">
+          <h1>Farm Ledger</h1>
+          <span>Agricultural ERP & Wage System</span>
+        </div>
+      </div>
+
+      <!-- Role Selector Tabs -->
+      <div class="auth-role-tabs">
+        <button type="button" id="tab-role-farmer" class="role-tab-btn active">
+          <i class="fas fa-hat-cowboy"></i> Farmer Portal
+        </button>
+        <button type="button" id="tab-role-worker" class="role-tab-btn">
+          <i class="fas fa-user-gear"></i> Worker Portal
+        </button>
+      </div>
+
+      <!-- Mode Selector (Sign In vs Register) -->
+      <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--slate-200); padding-bottom: 12px;">
+        <button type="button" id="btn-mode-login" class="btn btn-sm btn-primary">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+        <button type="button" id="btn-mode-register" class="btn btn-sm btn-secondary">
+          <i class="fas fa-user-plus"></i> <span id="label-mode-register">Register New Farm</span>
+        </button>
+      </div>
+
+      <!-- SIGN IN FORM -->
+      <div id="section-login">
+        <form id="form-login">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Registered Email Address</label>
+            <input type="email" id="login-email" class="form-control" placeholder="name@farmledger.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            Sign In to Dashboard <i class="fas fa-arrow-right"></i>
+          </button>
+          <div id="worker-login-notice" style="display: none; margin-top: 14px; padding: 12px 14px; background: rgba(14, 165, 233, 0.08); border-left: 3px solid var(--sky-blue); border-radius: var(--radius-sm); font-size: 0.8rem; color: #0369a1; line-height: 1.45;">
+            <i class="fas fa-info-circle"></i> <strong>Worker Sign In:</strong> Farm workers are registered and onboarded directly by their farm owner. Please sign in with the email and password provided by your farmer.
+          </div>
+        </form>
+      </div>
+
+      <!-- REGISTER FORM (Farmer) -->
+      <div id="section-register" style="display: none;">
+        <form id="form-register">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" id="label-reg-name" for="reg-name">Farmer Full Name *</label>
+              <input type="text" id="reg-name" class="form-control" placeholder="e.g. Rajesh Verma" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reg-phone">Phone Number</label>
+              <input type="tel" id="reg-phone" class="form-control" placeholder="+91 98765 43210">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Account Email *</label>
+            <input type="email" id="reg-email" class="form-control" placeholder="name@farmledger.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Password (min 6 characters) *</label>
+            <input type="password" id="reg-password" class="form-control" placeholder="••••••••" minlength="6" required>
+          </div>
+
+          <!-- Farmer-Specific Registration Fields -->
+          <div id="reg-farmer-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="reg-farm-name">Farm / Estate Name</label>
+                <input type="text" id="reg-farm-name" class="form-control" placeholder="e.g. Green Acres Farm">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-farm-size">Farm Size (Acres)</label>
+                <input type="number" id="reg-farm-size" class="form-control" placeholder="e.g. 40" min="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reg-farm-location">Farm Location / Region</label>
+              <input type="text" id="reg-farm-location" class="form-control" placeholder="e.g. Karnal, Haryana">
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block">
+            Register Farm & Continue <i class="fas fa-check"></i>
+          </button>
+        </form>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center; font-size: 0.78rem; color: var(--slate-500);">
+        Protected by JWT Authentication • Shared Live MongoDB Backend
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. FARMER DASHBOARD VIEW                                                  -->
+  <!-- ========================================================================= -->
+  <div id="view-farmer" class="app-container" style="display: none;">
+    <!-- Farmer Sidebar Navigation -->
+    <aside id="farmer-sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <i class="fas fa-seedling"></i>
+        </div>
+        <div class="sidebar-title">
+          <h2>Farm Ledger</h2>
+          <span>Farmer Admin</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Core Operations</div>
+        <div class="nav-link farmer-nav-btn active" data-tab="overview">
+          <i class="fas fa-chart-pie"></i> Overview & KPIs
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="crops">
+          <i class="fas fa-seedling"></i> Crop Records
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="workers">
+          <i class="fas fa-users"></i> Workers & Wages
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="attendance">
+          <i class="fas fa-calendar-check"></i> Attendance Register
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="payments">
+          <i class="fas fa-hand-holding-dollar"></i> Wage Disbursements
+        </div>
+
+        <div class="nav-section-label">Farm Accounting</div>
+        <div class="nav-link farmer-nav-btn" data-tab="expenses">
+          <i class="fas fa-receipt"></i> Crop Expenses
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="sales">
+          <i class="fas fa-wheat-awn"></i> Crop Sales & Revenue
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="transactions">
+          <i class="fas fa-book-journal-whills"></i> Unified Ledger
+        </div>
+        <div class="nav-link farmer-nav-btn" data-tab="reports">
+          <i class="fas fa-file-invoice-dollar"></i> Reports & Analytics
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-snippet">
+          <div id="farmer-avatar-letter" class="user-avatar">F</div>
+          <div class="user-details">
+            <div id="farmer-user-name" class="user-name">Farmer Admin</div>
+            <div id="farmer-farm-name" class="user-role-badge">My Farm</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm btn-block btn-logout">
+          <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Farmer Main Content Shell -->
+    <main class="main-content">
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="farmer-menu-toggle" class="menu-toggle-btn" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="page-breadcrumb">
+            <h1 id="farmer-page-title" class="page-title">Farm Financial Overview</h1>
+            <span id="farmer-page-subtitle" class="page-subtitle">Comprehensive KPIs, Revenue, Expenses & Real-time Analytics</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-secondary btn-sm btn-logout" title="Sign Out">
+            <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Body Panes -->
+      <div class="content-body">
+
+        <!-- TAB 1: OVERVIEW & KPIS -->
+        <div id="farmer-tab-overview" class="farmer-tab-pane" style="display: block;">
+          <!-- Top Metric Cards Grid -->
+          <div class="stat-grid">
+            <div class="stat-card card-revenue">
+              <div class="stat-card-header">
+                <span class="stat-label">Crop Sales Revenue</span>
+                <div class="stat-icon"><i class="fas fa-wheat-awn"></i></div>
+              </div>
+              <div id="kpi-revenue" class="stat-value">₹0</div>
+              <div class="stat-subtext">
+                <span class="trend-up"><i class="fas fa-arrow-trend-up"></i> Realized harvest</span> from market
+              </div>
+            </div>
+
+            <div class="stat-card card-expense">
+              <div class="stat-card-header">
+                <span class="stat-label">Crop Input Expenses</span>
+                <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+              </div>
+              <div id="kpi-expenses" class="stat-value">₹0</div>
+              <div class="stat-subtext">
+                Seeds, fertilizers, diesel, machinery
+              </div>
+            </div>
+
+            <div class="stat-card card-wages">
+              <div class="stat-card-header">
+                <span class="stat-label">Worker Wages Paid</span>
+                <div class="stat-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+              </div>
+              <div id="kpi-wages-paid" class="stat-value">₹0</div>
+              <div class="stat-subtext">
+                Actual wage disbursements
+              </div>
+            </div>
+
+            <div class="stat-card card-profit">
+              <div class="stat-card-header">
+                <span class="stat-label">Net Farm Profit / Loss</span>
+                <div class="stat-icon"><i class="fas fa-scale-balanced"></i></div>
+              </div>
+              <div id="kpi-profit" class="stat-value">₹0</div>
+              <div class="stat-subtext">
+                <span id="kpi-profit-margin" class="trend-up">0% Net Margin</span> (Revenue - Total Cost)
+              </div>
+            </div>
+
+            <div class="stat-card card-workers">
+              <div class="stat-card-header">
+                <span class="stat-label">Outstanding Worker Dues</span>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+              </div>
+              <div id="kpi-wages-pending" class="stat-value" style="color: var(--harvest-gold);">₹0</div>
+              <div class="stat-subtext">
+                <span id="kpi-workers-count">0</span> active workers on payroll
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <h3>Financial Trajectory & Profitability</h3>
+                  <p>Monthly Crop Revenue vs Operational Expenses (6-Month Trend)</p>
+                </div>
+              </div>
+              <div class="chart-body">
+                <canvas id="chart-monthly-trends"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <h3>Expense Composition</h3>
+                  <p>Input Costs vs Labor Wages Breakdown</p>
+                </div>
+              </div>
+              <div class="chart-body">
+                <canvas id="chart-expense-categories"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activity Table / Timeline -->
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Live Farm Activity & Audit Stream</h3>
+                <p>Latest crop sales, wage disbursements, and input purchases logged</p>
+              </div>
+              <div class="data-card-actions">
+                <button class="btn btn-secondary btn-sm" onclick="FarmerDashboard.switchTab('transactions')">
+                  View Full Ledger <i class="fas fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+            <div style="padding: 16px 24px;" id="recent-activity-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: CROPS & CULTIVATION RECORDS -->
+        <div id="farmer-tab-crops" class="farmer-tab-pane" style="display: none;">
+          <!-- Top Crop Metric Cards -->
+          <div class="stat-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Crop Records</span>
+                <div class="stat-icon"><i class="fas fa-seedling"></i></div>
+              </div>
+              <div id="crop-summary-total" class="stat-value">0</div>
+              <div class="stat-subtext">Total crops documented in ledger</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Cultivations</span>
+                <div class="stat-icon"><i class="fas fa-plant-wilt"></i></div>
+              </div>
+              <div id="crop-summary-active" class="stat-value text-success">0</div>
+              <div class="stat-subtext">Currently sown, growing, or harvesting</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Area Sown</span>
+                <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+              </div>
+              <div id="crop-summary-area" class="stat-value">0 Acres</div>
+              <div class="stat-subtext">Cumulative farm acreage under cultivation</div>
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Crop Cultivation Records</h3>
+                <p>Track planting dates, varieties, seasons, acreage, and expected harvest schedules</p>
+              </div>
+              <div class="data-card-actions">
+                <div class="filter-bar">
+                  <select id="filter-crop-status" class="form-control" style="width: auto;">
+                    <option value="">All Cultivation Statuses</option>
+                    <option value="planned">Planned</option>
+                    <option value="sown">Sown</option>
+                    <option value="growing">Growing</option>
+                    <option value="harvesting">Harvesting</option>
+                    <option value="harvested">Harvested</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <select id="filter-crop-season" class="form-control" style="width: auto;">
+                    <option value="">All Seasons</option>
+                    <option value="kharif">Kharif (Monsoon)</option>
+                    <option value="rabi">Rabi (Winter)</option>
+                    <option value="zaid">Zaid (Summer)</option>
+                    <option value="perennial">Perennial</option>
+                  </select>
+                  <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filter-crop-search" class="form-control" placeholder="Search crop or variety...">
+                  </div>
+                  <button id="btn-reset-crop-filters" class="btn btn-secondary btn-sm" title="Reset Filters">
+                    <i class="fas fa-rotate-left"></i> Reset
+                  </button>
+                </div>
+                <button id="btn-add-crop" class="btn btn-primary btn-sm">
+                  <i class="fas fa-plus"></i> Add Crop Record
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Sowing / Plantation Date</th>
+                    <th>Crop Name & Variety</th>
+                    <th>Season</th>
+                    <th>Area (Acres)</th>
+                    <th>Status</th>
+                    <th>Expected Harvest</th>
+                    <th>Field / Plot</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="crops-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: WORKERS & WAGES -->
+        <div id="farmer-tab-workers" class="farmer-tab-pane" style="display: none;">
+          <!-- Workforce Financial Overview Summary Grid -->
+          <div class="stat-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Attendance</span>
+                <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+              </div>
+              <div id="worker-summary-attendance" class="stat-value">0 Days</div>
+              <div class="stat-subtext">Total workdays logged across team</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Salary Earned</span>
+                <div class="stat-icon"><i class="fas fa-coins"></i></div>
+              </div>
+              <div id="worker-summary-earned" class="stat-value">₹0</div>
+              <div class="stat-subtext">Cumulative gross wages earned</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Amount Paid</span>
+                <div class="stat-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+              </div>
+              <div id="worker-summary-paid" class="stat-value text-success">₹0</div>
+              <div class="stat-subtext">Total disbursements made to workers</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending Salary</span>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+              </div>
+              <div id="worker-summary-pending" class="stat-value text-danger">₹0</div>
+              <div class="stat-subtext">Outstanding payable wages balance</div>
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Farm Hands & Workforce Directory</h3>
+                <p>Manage worker credentials, daily wage rates, active status, and outstanding balances</p>
+              </div>
+              <div class="data-card-actions">
+                <button id="btn-add-worker" class="btn btn-primary btn-sm">
+                  <i class="fas fa-user-plus"></i> Add New Worker
+                </button>
+              </div>
+            </div>
+            <div id="workers-grid" class="worker-grid">
+              <!-- Dynamically populated with worker cards -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: ATTENDANCE REGISTER -->
+        <div id="farmer-tab-attendance" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Daily Attendance & Workdays Register</h3>
+                <p>Record presence, hours worked, field activities, and automatic daily wage calculations</p>
+              </div>
+              <div class="data-card-actions">
+                <div class="filter-bar">
+                  <select id="filter-att-worker" class="form-control" style="width: auto;">
+                    <option value="">All Workers</option>
+                  </select>
+                  <select id="filter-att-status" class="form-control" style="width: auto;">
+                    <option value="">All Statuses</option>
+                    <option value="present">Full Day</option>
+                    <option value="half_day">Half Day</option>
+                    <option value="overtime">Overtime</option>
+                    <option value="absent">Absent</option>
+                  </select>
+                </div>
+                <button id="btn-mark-attendance" class="btn btn-primary btn-sm">
+                  <i class="fas fa-calendar-plus"></i> Mark Attendance
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Worker</th>
+                    <th>Status</th>
+                    <th>Hours</th>
+                    <th>Base Rate</th>
+                    <th>Calculated Wage</th>
+                    <th>Field & Activity</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="attendance-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: WAGE DISBURSEMENTS -->
+        <div id="farmer-tab-payments" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Wage Disbursements & Payout Records</h3>
+                <p>Record payments made to workers via Cash, UPI, or Bank Transfer to clear dues</p>
+              </div>
+              <div class="data-card-actions">
+                <div class="filter-bar">
+                  <select id="filter-pay-worker" class="form-control" style="width: auto;">
+                    <option value="">All Workers</option>
+                  </select>
+                  <select id="filter-pay-mode" class="form-control" style="width: auto;">
+                    <option value="">All Payment Modes</option>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+                <button id="btn-record-payment" class="btn btn-primary btn-sm">
+                  <i class="fas fa-money-bill-transfer"></i> Record Wage Payment
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Worker</th>
+                    <th>Amount Paid</th>
+                    <th>Mode</th>
+                    <th>Reference / Voucher</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="payments-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: CROP EXPENSES -->
+        <div id="farmer-tab-expenses" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Crop Expenses & Input Costs</h3>
+                <p>Track seeds, fertilizers, pesticides, irrigation, fuel, and machinery expenses</p>
+              </div>
+              <div class="data-card-actions">
+                <span class="badge badge-warning" style="font-size: 0.9rem; padding: 6px 12px;">
+                  Total Expenses: <strong id="total-expenses-tally">₹0</strong>
+                </span>
+                <div class="filter-bar">
+                  <select id="filter-exp-category" class="form-control" style="width: auto;">
+                    <option value="">All Categories</option>
+                    <option value="seeds">Seeds</option>
+                    <option value="fertilizers">Fertilizers</option>
+                    <option value="pesticides">Pesticides</option>
+                    <option value="irrigation">Irrigation</option>
+                    <option value="fuel">Fuel & Diesel</option>
+                    <option value="machinery">Machinery Rental</option>
+                    <option value="transport">Transport</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filter-exp-search" class="form-control" placeholder="Search crop or vendor...">
+                  </div>
+                </div>
+                <button id="btn-add-expense" class="btn btn-primary btn-sm">
+                  <i class="fas fa-plus-circle"></i> Add Expense
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Crop / Field</th>
+                    <th>Vendor / Supplier</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Mode</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="expenses-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 6: CROP SALES & REVENUE -->
+        <div id="farmer-tab-sales" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Crop Harvest Sales & Revenue</h3>
+                <p>Record produce harvests, buyers, market rates, and total financial proceeds</p>
+              </div>
+              <div class="data-card-actions" style="flex-wrap: wrap; gap: 10px;">
+                <span class="badge badge-success" style="font-size: 0.9rem; padding: 6px 12px;">
+                  Total Revenue: <strong id="total-sales-tally">₹0</strong>
+                </span>
+                <div class="filter-bar" style="flex-wrap: wrap;">
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <input type="date" id="filter-sale-start-date" class="form-control" title="Filter From Date" style="width: auto;">
+                    <span style="font-size: 0.8rem; color: var(--slate-500);">to</span>
+                    <input type="date" id="filter-sale-end-date" class="form-control" title="Filter To Date (Future Dates Supported)" style="width: auto;">
+                  </div>
+                  <select id="filter-sale-crop" class="form-control" style="width: auto;">
+                    <option value="">All Crops</option>
+                  </select>
+                  <select id="filter-sale-buyer" class="form-control" style="width: auto;">
+                    <option value="">All Buyers</option>
+                  </select>
+                  <select id="filter-sale-status" class="form-control" style="width: auto;">
+                    <option value="">All Payment Statuses</option>
+                    <option value="received">Payment Received</option>
+                    <option value="pending">Pending Payment</option>
+                    <option value="partial">Partial Received</option>
+                  </select>
+                  <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filter-sale-search" class="form-control" placeholder="Search crop or buyer...">
+                  </div>
+                  <button id="btn-reset-sale-filters" class="btn btn-secondary btn-sm" title="Reset all Selling filters">
+                    <i class="fas fa-rotate-left"></i> Reset
+                  </button>
+                </div>
+                <button id="btn-add-sale" class="btn btn-primary btn-sm">
+                  <i class="fas fa-cart-plus"></i> Record Crop Sale
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Sale Date</th>
+                    <th>Crop & Variety</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total Revenue</th>
+                    <th>Buyer / Mandi</th>
+                    <th>Status</th>
+                    <th>Received</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 7: UNIFIED LEDGER -->
+        <div id="farmer-tab-transactions" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Unified Farm Financial Ledger</h3>
+                <p>Complete double-entry style audit trail of all revenues, input expenses, and wage payouts</p>
+              </div>
+              <div class="data-card-actions">
+                <span class="badge badge-success">Credits: <strong id="tx-total-credits">+₹0</strong></span>
+                <span class="badge badge-danger">Debits: <strong id="tx-total-debits">-₹0</strong></span>
+                <span class="badge badge-primary">Net Flow: <strong id="tx-net-cashflow">₹0</strong></span>
+
+                <div class="filter-bar">
+                  <select id="filter-tx-type" class="form-control" style="width: auto;">
+                    <option value="all">All Cash Flows</option>
+                    <option value="revenue">Revenues (Sales)</option>
+                    <option value="expense">Expenses (Inputs)</option>
+                    <option value="wage">Wage Payouts</option>
+                  </select>
+                  <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filter-tx-search" class="form-control" placeholder="Search party, title...">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Transaction Details</th>
+                    <th>Counterparty</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Amount (INR)</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 8: REPORTS & ANALYTICS -->
+        <div id="farmer-tab-reports" class="farmer-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>Farm Financial & Production Reports</h3>
+                <p>Analyze performance metrics across seasons, download CSV reports, or print summaries</p>
+              </div>
+              <div class="data-card-actions">
+                <select id="report-period-select" class="form-control" style="width: auto;">
+                  <option value="7days">Last 7 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                  <option value="season" selected>Current Agricultural Season</option>
+                  <option value="year">Past 12 Months</option>
+                  <option value="all">All-Time Performance</option>
+                </select>
+                <button id="btn-export-csv" class="btn btn-secondary btn-sm">
+                  <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button id="btn-print-report" class="btn btn-primary btn-sm">
+                  <i class="fas fa-print"></i> Print Report
+                </button>
+              </div>
+            </div>
+
+            <div id="report-metrics-container" style="padding: 24px;">
+              <!-- Report KPI Cards -->
+              <div class="stat-grid" style="margin-bottom: 24px;">
+                <div class="stat-card card-revenue">
+                  <span class="stat-label">Crop Sales Revenue</span>
+                  <div id="report-revenue" class="stat-value">₹0</div>
+                </div>
+                <div class="stat-card card-expense">
+                  <span class="stat-label">Crop Input Costs</span>
+                  <div id="report-expenses" class="stat-value">₹0</div>
+                </div>
+                <div class="stat-card card-wages">
+                  <span class="stat-label">Labor Wages Incurred</span>
+                  <div id="report-wages" class="stat-value">₹0</div>
+                </div>
+                <div class="stat-card card-profit">
+                  <span class="stat-label">Net Operating Profit</span>
+                  <div id="report-net-profit" class="stat-value">₹0</div>
+                  <div class="stat-subtext"><span id="report-margin">0%</span> Net Margin</div>
+                </div>
+              </div>
+
+              <!-- Two Column Breakdown -->
+              <div class="charts-grid">
+                <!-- Crop Sales Performance -->
+                <div>
+                  <h4 style="margin-bottom: 12px; color: var(--slate-900); font-size: 1rem;">
+                    <i class="fas fa-wheat-awn text-success"></i> Crop Harvest Sales Summary
+                  </h4>
+                  <div class="table-responsive">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Crop Name</th>
+                          <th>Total Harvest Sold</th>
+                          <th>Total Revenue</th>
+                          <th>Avg Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody id="report-crops-tbody">
+                        <!-- Populated dynamically -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Expense Category Breakdown -->
+                <div>
+                  <h4 style="margin-bottom: 12px; color: var(--slate-900); font-size: 1rem;">
+                    <i class="fas fa-pie-chart text-danger"></i> Operating Cost Breakdown
+                  </h4>
+                  <div class="table-responsive">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Category</th>
+                          <th>Cost (INR)</th>
+                          <th>% of Total</th>
+                        </tr>
+                      </thead>
+                      <tbody id="report-expense-tbody">
+                        <!-- Populated dynamically -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 24px; padding: 16px; background: var(--slate-50); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--slate-600);">
+                <strong>Total Operating Cost:</strong> <span id="report-total-cost">₹0</span> (Crop Inputs + Labor Wages) • Automatically compiled from MongoDB real-time ledger entries.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. WORKER DASHBOARD VIEW (Isolated & Personalized)                        -->
+  <!-- ========================================================================= -->
+  <div id="view-worker" class="app-container" style="display: none;">
+    <!-- Worker Sidebar -->
+    <aside id="worker-sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo" style="background: linear-gradient(135deg, var(--sky-blue), #0369a1);">
+          <i class="fas fa-tractor"></i>
+        </div>
+        <div class="sidebar-title">
+          <h2>Farm Ledger</h2>
+          <span>Worker Portal</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">My Workspace</div>
+        <div class="nav-link worker-nav-btn active" data-tab="overview">
+          <i class="fas fa-gauge-high"></i> My Overview & Balance
+        </div>
+        <div class="nav-link worker-nav-btn" data-tab="attendance">
+          <i class="fas fa-calendar-check"></i> My Attendance Log
+        </div>
+        <div class="nav-link worker-nav-btn" data-tab="payments">
+          <i class="fas fa-receipt"></i> Payment Vouchers
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-snippet">
+          <div id="worker-avatar-letter" class="user-avatar avatar-worker">W</div>
+          <div class="user-details">
+            <div id="worker-user-name" class="user-name">Worker User</div>
+            <div class="user-role-badge" style="background: var(--sky-light); color: var(--sky-blue);">Worker</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm btn-block btn-logout">
+          <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Worker Main Content -->
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="worker-menu-toggle" class="menu-toggle-btn" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="page-breadcrumb">
+            <h1 class="page-title">Worker Personal Ledger</h1>
+            <span class="page-subtitle">Your personal attendance records, wage earnings, and payment history</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-secondary btn-sm btn-logout" title="Sign Out">
+            <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <!-- Worker Hero Banner Card -->
+        <div class="worker-hero-card">
+          <div class="worker-hero-top">
+            <div class="worker-hero-user">
+              <div id="worker-hero-avatar" class="worker-hero-avatar">W</div>
+              <div class="worker-hero-name">
+                <h2 id="worker-hero-name">Worker Name</h2>
+                <p id="worker-hero-spec">Machinery Operator • Base Wage Rate: ₹600/day</p>
+                <div id="worker-hero-farm" style="font-size: 0.82rem; margin-top: 4px; color: var(--primary-100);">
+                  <i class="fas fa-tractor"></i> Green Acres Agri Estate • Farmer: Rajesh Verma
+                </div>
+              </div>
+            </div>
+            <span class="badge badge-success" style="padding: 8px 16px; font-size: 0.85rem;">
+              <i class="fas fa-circle-check"></i> Active Payroll Status
+            </span>
+          </div>
+
+          <div class="worker-hero-stats">
+            <div class="worker-stat-box">
+              <div class="title">Total Wages Earned</div>
+              <div id="worker-kpi-earned" class="amount">₹0</div>
+              <div style="font-size: 0.72rem; color: var(--primary-200); margin-top: 4px;">Based on verified workdays</div>
+            </div>
+
+            <div class="worker-stat-box">
+              <div class="title">Payments Received</div>
+              <div id="worker-kpi-received" class="amount">₹0</div>
+              <div style="font-size: 0.72rem; color: var(--primary-200); margin-top: 4px;">Disbursed via cash / UPI / bank</div>
+            </div>
+
+            <div id="worker-pending-box" class="worker-stat-box highlight">
+              <div class="title">Pending Wage Balance</div>
+              <div id="worker-kpi-pending" class="amount">₹0</div>
+              <div style="font-size: 0.72rem; color: #fff; margin-top: 4px;">Outstanding due from farm owner</div>
+            </div>
+
+            <div class="worker-stat-box">
+              <div class="title">Workdays Logged</div>
+              <div id="worker-kpi-days" class="amount">0 Days</div>
+              <div id="worker-kpi-hours" style="font-size: 0.72rem; color: var(--primary-200); margin-top: 4px;">0 hours logged</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 1: WORKER OVERVIEW -->
+        <div id="worker-tab-overview" class="worker-tab-pane" style="display: block;">
+          <!-- Chart Row -->
+          <div class="chart-card" style="margin-bottom: 24px;">
+            <div class="chart-header">
+              <div class="chart-title">
+                <h3>My Monthly Earnings & Payouts</h3>
+                <p>Compare wages earned against disbursements received over the past 6 months</p>
+              </div>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-worker-trends"></canvas>
+            </div>
+          </div>
+
+          <!-- Side by Side Tables -->
+          <div class="charts-grid">
+            <!-- Recent Attendance -->
+            <div class="data-card">
+              <div class="data-card-header">
+                <div class="data-card-title">
+                  <h3>Recent Workdays Logged</h3>
+                  <p>Attendance records verified by farmer</p>
+                </div>
+                <div class="data-card-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="WorkerDashboard.switchTab('attendance')">
+                    View All <i class="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Status</th>
+                      <th>Hours</th>
+                      <th>Activity</th>
+                      <th>Daily Wage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="worker-recent-att-tbody">
+                    <!-- Dynamic -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="data-card">
+              <div class="data-card-header">
+                <div class="data-card-title">
+                  <h3>Recent Payment Receipts</h3>
+                  <p>Direct payouts to you from farmer</p>
+                </div>
+                <div class="data-card-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="WorkerDashboard.switchTab('payments')">
+                    View All <i class="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Mode</th>
+                      <th>Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody id="worker-recent-pay-tbody">
+                    <!-- Dynamic -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: WORKER ATTENDANCE LOG -->
+        <div id="worker-tab-attendance" class="worker-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>My Complete Attendance & Shift History</h3>
+                <p>Filter by attendance status and view all recorded days and earned wages</p>
+              </div>
+              <div class="data-card-actions">
+                <span class="badge badge-success">Total Days: <strong id="worker-att-days-tally">0</strong></span>
+                <span class="badge badge-primary">Total Earned: <strong id="worker-att-earned-tally">₹0</strong></span>
+
+                <div class="filter-bar">
+                  <select id="worker-filter-att-status" class="form-control" style="width: auto;">
+                    <option value="">All Statuses</option>
+                    <option value="present">Present (Full Day)</option>
+                    <option value="half_day">Half Day</option>
+                    <option value="overtime">Overtime</option>
+                    <option value="absent">Absent</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Hours</th>
+                    <th>Wage Rate</th>
+                    <th>Earned Wage</th>
+                    <th>Field & Task Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="worker-full-att-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: WORKER PAYMENT RECEIPTS -->
+        <div id="worker-tab-payments" class="worker-tab-pane" style="display: none;">
+          <div class="data-card">
+            <div class="data-card-header">
+              <div class="data-card-title">
+                <h3>My Payment Vouchers & Settlement History</h3>
+                <p>Complete receipt ledger of all wage disbursements paid to you</p>
+              </div>
+              <div class="data-card-actions">
+                <span class="badge badge-success">Total Disbursed to You: <strong id="worker-pay-tally">₹0</strong></span>
+
+                <div class="filter-bar">
+                  <select id="worker-filter-pay-mode" class="form-control" style="width: auto;">
+                    <option value="">All Payment Modes</option>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date Received</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Method</th>
+                    <th>Reference / Voucher No</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="worker-full-pay-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. MODALS (FARMER ACTION DIALOGS)                                         -->
+  <!-- ========================================================================= -->
+
+  <!-- MODAL: ADD / EDIT WORKER -->
+  <div id="modal-worker" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3 id="modal-worker-title">Add New Farm Worker</h3>
+          <p>Create a worker account with wage rate and assigned specialization</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-worker">
+        <div class="modal-body">
+          <input type="hidden" id="modal-worker-id">
+
+          <div class="form-group">
+            <label class="form-label" for="modal-worker-name">Worker Full Name *</label>
+            <input type="text" id="modal-worker-name" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-worker-email">Worker Login Email *</label>
+              <input type="email" id="modal-worker-email" class="form-control" placeholder="ramesh@farmledger.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-worker-phone">Phone Number</label>
+              <input type="tel" id="modal-worker-phone" class="form-control" placeholder="+91 98123 00001">
+            </div>
+          </div>
+
+          <div id="modal-worker-pass-group" class="form-group">
+            <label class="form-label" for="modal-worker-password">Login Password (min 6 chars) *</label>
+            <input type="password" id="modal-worker-password" class="form-control" placeholder="Create worker password">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-worker-rate">Daily Wage Rate (₹) *</label>
+              <input type="number" id="modal-worker-rate" class="form-control" value="500" min="0" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-worker-status">Status</label>
+              <select id="modal-worker-status" class="form-control">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-worker-spec">Specialization / Role</label>
+            <input type="text" id="modal-worker-spec" class="form-control" placeholder="e.g. Tractor Operator, Harvester, Irrigation Specialist">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Save Worker</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MARK ATTENDANCE -->
+  <div id="modal-attendance" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Mark Worker Attendance</h3>
+          <p>Record presence, hours worked, and compute daily wages</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-attendance">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="modal-att-worker">Select Worker *</label>
+            <select id="modal-att-worker" class="form-control" required>
+              <option value="" disabled selected>Choose a worker...</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-att-date">Attendance Date *</label>
+              <input type="date" id="modal-att-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-att-status">Attendance Status *</label>
+              <select id="modal-att-status" class="form-control" required>
+                <option value="present">Present (Full Day - 100%)</option>
+                <option value="half_day">Half Day (50%)</option>
+                <option value="overtime">Overtime (1.375x+)</option>
+                <option value="absent">Absent (0%)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-att-hours">Hours Worked</label>
+              <input type="number" id="modal-att-hours" class="form-control" value="8" min="0" max="24">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-att-rate">Daily Rate (₹)</label>
+              <input type="number" id="modal-att-rate" class="form-control" value="500" min="0">
+            </div>
+          </div>
+
+          <!-- Calculated Wage Callout -->
+          <div style="background: var(--primary-50); border: 1px solid var(--primary-200); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.84rem; font-weight: 600; color: var(--primary-800);">Computed Earned Wage:</span>
+            <strong id="modal-att-wage-calc" style="font-size: 1.2rem; color: var(--primary-700);">₹500</strong>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-att-field">Field / Section</label>
+              <input type="text" id="modal-att-field" class="form-control" placeholder="e.g. Wheat Block A, Tomato Polyhouse">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-att-activity">Activity / Task</label>
+              <input type="text" id="modal-att-activity" class="form-control" placeholder="e.g. Sowing, Harvesting, Spraying">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-att-notes">Work Notes / Remarks</label>
+            <input type="text" id="modal-att-notes" class="form-control" placeholder="Optional notes">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Record Attendance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RECORD WAGE PAYMENT -->
+  <div id="modal-payment" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Disburse Worker Wage Payment</h3>
+          <p>Record a payout made to a worker to clear accumulated dues</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-payment">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="modal-pay-worker">Select Worker *</label>
+            <select id="modal-pay-worker" class="form-control" required>
+              <option value="" disabled selected>Choose a worker...</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-pay-amount">Amount Paid (₹) *</label>
+              <input type="number" id="modal-pay-amount" class="form-control" placeholder="e.g. 3500" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-pay-date">Payment Date *</label>
+              <input type="date" id="modal-pay-date" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-pay-mode">Payment Mode *</label>
+              <select id="modal-pay-mode" class="form-control" required>
+                <option value="cash">Cash Handout</option>
+                <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
+                <option value="bank_transfer">Bank Transfer (NEFT/IMPS)</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-pay-ref">Reference / Voucher No</label>
+              <input type="text" id="modal-pay-ref" class="form-control" placeholder="e.g. UPI/382910, VOUCHER-042">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-pay-notes">Payment Remarks</label>
+            <textarea id="modal-pay-notes" class="form-control" placeholder="e.g. Bi-weekly wage payout, overtime settlement"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Record Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CROP EXPENSE -->
+  <div id="modal-expense" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Record Crop Expense</h3>
+          <p>Log farm input costs, machinery rentals, fuel, and operating supplies</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-expense">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-category">Expense Category *</label>
+              <select id="modal-exp-category" class="form-control" required>
+                <option value="seeds">Seeds</option>
+                <option value="fertilizers">Fertilizers</option>
+                <option value="pesticides">Pesticides & Bio-Shield</option>
+                <option value="irrigation">Irrigation & Drip Piping</option>
+                <option value="fuel">Fuel (Diesel / Petrol)</option>
+                <option value="machinery">Machinery Rental / Repair</option>
+                <option value="labor_misc">Labor & Miscellaneous</option>
+                <option value="transport">Freight & Transport</option>
+                <option value="other">Other Supplies</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-crop">Associated Crop / Field</label>
+              <input type="text" id="modal-exp-crop" class="form-control" placeholder="e.g. Wheat - Sharbati, General Farm">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-amount">Amount (₹) *</label>
+              <input type="number" id="modal-exp-amount" class="form-control" placeholder="e.g. 12500" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-date">Expense Date *</label>
+              <input type="date" id="modal-exp-date" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-vendor">Vendor / Supplier</label>
+              <input type="text" id="modal-exp-vendor" class="form-control" placeholder="e.g. IFFCO Agro Center">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-exp-mode">Payment Method</label>
+              <select id="modal-exp-mode" class="form-control">
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="credit">Credit / Khata</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-exp-desc">Item Description & Quantity</label>
+            <textarea id="modal-exp-desc" class="form-control" placeholder="e.g. 10 Bags DAP, 15 Bags Urea, micro-nutrients"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Record Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RECORD CROP SALE -->
+  <div id="modal-sale" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Record Crop Harvest Sale</h3>
+          <p>Record produce sold, buyer details, and realized revenue</p>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-modal-sale">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-crop">Crop Name *</label>
+              <input type="text" id="modal-sale-crop" class="form-control" placeholder="e.g. Wheat, Basmati Paddy, Tomatoes" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-variety">Variety / Grade</label>
+              <input type="text" id="modal-sale-variety" class="form-control" placeholder="e.g. Sharbati DBW-187, A-Grade">
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-qty">Quantity *</label>
+              <input type="number" id="modal-sale-qty" class="form-control" placeholder="e.g. 100" step="0.01" min="0.01" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-unit">Unit *</label>
+              <select id="modal-sale-unit" class="form-control" required>
+                <option value="quintal">Quintal</option>
+                <option value="kg">Kg</option>
+                <option value="ton">Ton</option>
+                <option value="crates">Crates</option>
+                <option value="bags">Bags</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-price">Unit Price (₹) *</label>
+              <input type="number" id="modal-sale-price" class="form-control" placeholder="e.g. 2450" step="0.01" min="0.01" required>
+            </div>
+          </div>
+
+          <!-- Total Revenue Callout Preview -->
+          <div style="background: var(--success-bg); border: 1px solid var(--success); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.84rem; font-weight: 600; color: #065f46;">Calculated Total Revenue:</span>
+            <strong id="modal-sale-total-calc" style="font-size: 1.25rem; color: var(--success);">₹0</strong>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-date">Sale Date *</label>
+              <input type="date" id="modal-sale-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-status">Payment Status *</label>
+              <select id="modal-sale-status" class="form-control" required>
+                <option value="received">Payment Received Full</option>
+                <option value="pending">Pending Payment</option>
+                <option value="partial">Partial Received</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-buyer">Buyer Name / Mandi</label>
+              <input type="text" id="modal-sale-buyer" class="form-control" placeholder="e.g. Haryana Grain APMC Mandi">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-contact">Buyer Contact Phone</label>
+              <input type="tel" id="modal-sale-contact" class="form-control" placeholder="+91 94160 11223">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-received">Amount Already Received (₹)</label>
+              <input type="number" id="modal-sale-received" class="form-control" placeholder="Leave empty if full received">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-sale-notes">Sale Notes</label>
+              <input type="text" id="modal-sale-notes" class="form-control" placeholder="e.g. First MSP harvest batch">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Record Crop Sale</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT CROP RECORD -->
+  <div id="modal-crop" class="modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-header-title">
+          <i class="fas fa-seedling"></i>
+          <h3 id="modal-crop-title">Add Crop Record</h3>
+        </div>
+        <button type="button" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="form-modal-crop">
+        <input type="hidden" id="modal-crop-id" value="">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-name">Crop Name *</label>
+              <input type="text" id="modal-crop-name" class="form-control" placeholder="e.g. Wheat, Cotton, Sugarcane, Soybean" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-variety">Variety / Hybrid</label>
+              <input type="text" id="modal-crop-variety" class="form-control" placeholder="e.g. Sharbati, BT Cotton, Co 86032">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-season">Crop Season *</label>
+              <select id="modal-crop-season" class="form-control" required>
+                <option value="kharif">Kharif (Monsoon)</option>
+                <option value="rabi">Rabi (Winter)</option>
+                <option value="zaid">Zaid (Summer)</option>
+                <option value="perennial">Perennial / Annual</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-status">Cultivation Status *</label>
+              <select id="modal-crop-status" class="form-control" required>
+                <option value="growing">Growing</option>
+                <option value="sown">Sown</option>
+                <option value="harvesting">Harvesting</option>
+                <option value="harvested">Harvested</option>
+                <option value="planned">Planned</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-date">Sowing / Plantation Date *</label>
+              <input type="date" id="modal-crop-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-harvest-date">Expected Harvest Date (Future Date Allowed)</label>
+              <input type="date" id="modal-crop-harvest-date" class="form-control">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-area">Cultivated Area (Acres) *</label>
+              <input type="number" id="modal-crop-area" class="form-control" value="2.5" step="0.1" min="0.1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-yield">Estimated Yield (Quintals)</label>
+              <input type="number" id="modal-crop-yield" class="form-control" placeholder="e.g. 45" step="0.5" min="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-location">Field / Plot Identifier</label>
+              <input type="text" id="modal-crop-location" class="form-control" placeholder="e.g. North Plot #3, Canal Field">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-crop-notes">Cultivation Notes</label>
+              <input type="text" id="modal-crop-notes" class="form-control" placeholder="e.g. Drip irrigation installed, organic manure used">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Save Crop Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/farmer.js"></script>
+  <script src="js/worker.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
