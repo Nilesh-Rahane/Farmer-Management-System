@@ -22,6 +22,21 @@ if (process.env.NODE_ENV !== 'production') {
 // Serve static assets from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Database connection middleware for API requests
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Database connection error in request:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection failed. Please check MONGODB_URI environment variable and MongoDB Atlas network access.',
+    });
+  }
+});
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/farmer', require('./routes/farmer'));

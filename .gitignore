@@ -1,0 +1,15 @@
+# Environment variables (Keep credentials private!)
+.env
+.env.local
+.env.*.local
+
+# Vercel build output
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
