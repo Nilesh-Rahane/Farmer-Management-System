@@ -189,6 +189,13 @@ const API = (() => {
           method: 'PUT',
           body: JSON.stringify(data),
         }),
+      // Marathi AI Farmer Assistant
+      askAssistant: (query) =>
+        request('/api/farmer/assistant/query', {
+          method: 'POST',
+          body: JSON.stringify({ query }),
+        }),
+      getAssistantContext: () => request('/api/farmer/assistant/context'),
     },
 
     // Worker-specific endpoints

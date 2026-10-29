@@ -23,6 +23,7 @@
 
   <!-- Application Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/marathiAssistant.css">
 
   <script>
     // Early session detection to prevent flicker on refresh
@@ -207,6 +208,12 @@
         <div class="nav-link farmer-nav-btn" data-tab="reports">
           <i class="fas fa-file-invoice-dollar"></i> <span data-i18n="navReports">Reports & Analytics</span>
         </div>
+
+        <div class="nav-section-label">AI शेतकरी सहाय्यक</div>
+        <div class="nav-link btn-assistant-trigger" onclick="if(window.MarathiAssistant) MarathiAssistant.open();" style="cursor: pointer; background: rgba(16, 185, 129, 0.08); color: var(--primary-700); font-weight: 600; border-radius: var(--radius-sm); border: 1px dashed rgba(16, 185, 129, 0.4);">
+          <i class="fas fa-robot text-success"></i> <span>मराठी AI मदतनीस</span>
+          <span class="badge badge-success" style="margin-left: auto; font-size: 0.68rem; padding: 2px 6px;">व्हॉइस</span>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -238,6 +245,9 @@
         </div>
 
         <div class="topbar-right">
+          <button type="button" class="btn btn-sm btn-outline-primary btn-assistant-trigger" title="मराठी AI शेतकरी मदतनीस" onclick="if(window.MarathiAssistant) MarathiAssistant.open();" style="border: 1px solid var(--primary-600); color: var(--primary-700); background: var(--primary-50); font-weight: 600;">
+            <i class="fas fa-microphone-lines text-success"></i> <span>मराठी AI</span>
+          </button>
           <button type="button" class="btn btn-sm btn-lang-toggle" title="Switch Language / भाषा बदला">
             <i class="fas fa-globe"></i> <span class="lang-current-label">मराठी</span>
           </button>
@@ -1934,6 +1944,103 @@
     </div>
   </div>
 
+  <!-- ========================================================================= -->
+  <!-- MARATHI AI FARMER ASSISTANT (मराठी शेतकरी मदतनीस)                          -->
+  <!-- ========================================================================= -->
+
+  <!-- Floating Launcher Button (FAB) -->
+  <div id="marathi-assistant-fab" class="marathi-assistant-fab" title="मराठी AI शेतकरी मदतनीस उघडा">
+    <div class="fab-icon-box">
+      <i class="fas fa-robot"></i>
+      <span class="fab-pulse-badge"></span>
+    </div>
+    <div class="fab-label-group">
+      <span class="fab-title">शेतकरी AI</span>
+      <span class="fab-sub">मराठी व्हॉइस मदत</span>
+    </div>
+  </div>
+
+  <!-- Assistant Chat Window -->
+  <div id="marathi-assistant-window" class="marathi-assistant-window minimized" role="dialog" aria-label="Marathi AI Farmer Assistant">
+    <!-- Header -->
+    <div class="assistant-header">
+      <div class="assistant-brand">
+        <div class="assistant-avatar">🌱</div>
+        <div class="assistant-title-group">
+          <h3>शेतकरी मित्र AI</h3>
+          <div class="assistant-status">
+            <span class="status-dot"></span>
+            <span id="assistant-status-text">ऑनलाइन</span>
+          </div>
+        </div>
+      </div>
+      <div class="assistant-header-actions">
+        <button type="button" id="btn-assistant-mute-toggle" class="btn-header-tool" title="आवाज सुरू/बंद">
+          <i class="fas fa-volume-high"></i>
+        </button>
+        <button type="button" id="btn-assistant-clear" class="btn-header-tool" title="चॅट साफ करा">
+          <i class="fas fa-rotate-left"></i>
+        </button>
+        <button type="button" id="btn-assistant-close" class="btn-header-tool" title="बंद करा">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Chat Messages Body -->
+    <div id="assistant-chat-body" class="assistant-body"></div>
+
+    <!-- Live Speech Listening Banner -->
+    <div id="assistant-listening-banner" class="assistant-listening-banner" style="display: none;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-microphone-lines text-danger"></i>
+        <span>माइक सुरू आहे... मराठीत बोला</span>
+      </div>
+      <div class="listening-wave">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+    </div>
+
+    <!-- Quick Shortcuts Bar (Optional) -->
+    <div class="assistant-chips-header" style="padding: 4px 14px; background: #ffffff; font-size: 0.72rem; color: #64748b; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f1f5f9;">
+      <span><i class="fas fa-bolt text-warning"></i> जलद शॉर्टकट (ऐच्छिक)</span>
+      <span style="font-size: 0.68rem; color: #94a3b8;">कोणताही प्रश्न स्वतः विचारा</span>
+    </div>
+    <div id="assistant-quick-chips" class="assistant-quick-chips"></div>
+
+    <!-- Footer Input Bar -->
+    <div class="assistant-footer">
+      <form id="assistant-input-form" class="assistant-input-form">
+        <input
+          type="text"
+          id="assistant-text-input"
+          class="assistant-input"
+          placeholder="मराठीत विचारा किंवा बोला..."
+          autocomplete="off"
+        />
+        <button
+          type="button"
+          id="btn-assistant-mic"
+          class="btn-input-action btn-mic"
+          title="माइक दाबून मराठीत बोला"
+        >
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button
+          type="submit"
+          id="btn-assistant-send"
+          class="btn-input-action btn-send"
+          title="पाठवा"
+        >
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/i18n.js"></script>
   <script src="js/api.js"></script>
@@ -1941,6 +2048,7 @@
   <script src="js/farmer.js"></script>
   <script src="js/worker.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/marathiAssistant.js"></script>
 
 </body>
 </html>

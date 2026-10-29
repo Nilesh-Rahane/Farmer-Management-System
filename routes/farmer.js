@@ -1899,4 +1899,58 @@ router.put('/corrections/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// 10. MARATHI AI FARMER ASSISTANT (LLM with Tool Calling & Rule-based Fallback)
+// ==========================================
+const { processAssistantQuery } = require('../utils/llmAssistant');
+const { getFarmerDatabaseContext } = require('../utils/marathiAssistant');
+
+// POST /api/farmer/assistant/query - Process natural language Marathi voice/text question
+router.post('/assistant/query', async (req, res) => {
+  try {
+    const { query } = req.body;
+    const farmerId = req.user._id;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'कृपया आपला प्रश्न विचारणे आवश्यक आहे.',
+      });
+    }
+
+    const result = await processAssistantQuery(farmerId, query, req.user);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Marathi AI Assistant query error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'मदतनीस प्रक्रियेमध्ये त्रुटी आली. कृपया पुन्हा प्रयत्न करा.',
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/farmer/assistant/context - Retrieve fresh financial database context
+router.get('/assistant/context', async (req, res) => {
+  try {
+    const farmerId = req.user._id;
+    const context = await getFarmerDatabaseContext(farmerId);
+    res.json({
+      success: true,
+      data: context,
+    });
+  } catch (error) {
+    console.error('Marathi AI Assistant context error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'डेटाबेस माहिती लोड करता आली नाही.',
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

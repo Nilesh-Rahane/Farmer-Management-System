@@ -171,6 +171,7 @@ const App = (() => {
     }
 
     if (window.I18n) I18n.applyTranslationsToDOM();
+    if (window.MarathiAssistant) MarathiAssistant.syncUserRole();
   };
 
   const handleAuthStateChange = async () => {
@@ -185,6 +186,7 @@ const App = (() => {
       if (farmerWrapper) farmerWrapper.style.display = 'none';
       if (workerWrapper) workerWrapper.style.display = 'none';
       if (window.I18n) I18n.applyTranslationsToDOM();
+      if (window.MarathiAssistant) MarathiAssistant.syncUserRole();
       return;
     }
 
